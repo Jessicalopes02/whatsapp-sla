@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  phone     String    @unique
+  role      String
+  active    Boolean   @default(true)
+  projects  Project[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Project {
+  id                String      @id @default(uuid())
+  name              String
+  groupExternalId   String      @unique
+  groupName         String
+  responsibleUserId String
+  slaMinutes        Int         @default(15)
+  active            Boolean     @default(true)
+
+  responsibleUser   User        @relation(fields: [responsibleUserId], references: [id])
+  messages          Message[]
+  slaTickets        SlaTicket[]
+
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model Message {
+  id                String    @id @default(uuid())
+  projectId         String
+  externalMessageId String    @unique
+  senderPhone       String
+  senderName        String?
+  senderType        String
+  body              String?
+  sentAt            DateTime
+  createdAt         DateTime  @default(now())
+
+  project           Project   @relation(fields: [projectId], references: [id])
+}
+
+model SlaTicket {
+  id                      String    @id @default(uuid())
+  projectId               String
+  openedMessageId         String
+  openedAt                DateTime
+  deadlineAt              DateTime
+  answeredMessageId       String?
+  answeredAt              DateTime?
+  status                  String
+  delaySeconds            Int?
+  privateNotificationSent Boolean   @default(false)
+
+  project                 Project   @relation(fields: [projectId], references: [id])
+
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  slaTicketId String
+  userId      String
+  type        String
+  status      String
+  payload     Json
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+}
