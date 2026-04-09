@@ -1,5 +1,5 @@
 import { env } from "../../config/env";
-import fetch from "node-fetch";
+
 
 export class TimelineIAService {
   private apiUrl: string = env.API_URL;
