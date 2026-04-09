@@ -10,15 +10,20 @@ import { slaTicketsRoutes } from "./routes/sla-tickets.routes";
 
 export const app = express();
 
-const allowedOrigins = ["http://localhost:3000"];
-
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://whatsapp-sla.vercel.app"
+];
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
