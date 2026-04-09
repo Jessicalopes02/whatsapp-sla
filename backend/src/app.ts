@@ -8,12 +8,21 @@ import { dashboardRoutes } from "./routes/dashboard.routes";
 import { timelinesRoutes } from "./routes/timelines.routes";
 import { slaTicketsRoutes } from "./routes/sla-tickets.routes";
 
-console.log("APP TS CARREGADO");
-console.log("TIMELINES ROUTES:", !!timelinesRoutes);
-
 export const app = express();
 
-app.use(cors());
+const allowedOrigins = ["http://localhost:3000"];
+
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
