@@ -3,6 +3,7 @@ import { prisma } from "../repositories/prisma";
 type DashboardFilters = {
   period?: string;
   userId?: string;
+  sectorId?: string;
   status?: string;
 };
 
@@ -45,6 +46,10 @@ export class DashboardService {
       projectWhere.responsibleUserId = filters.userId;
     }
 
+    if (filters.sectorId) {
+      projectWhere.sectorId = filters.sectorId;
+    }
+
     const ticketBaseWhere: any = {};
 
     if (fromDate) {
@@ -53,10 +58,16 @@ export class DashboardService {
       };
     }
 
+    if (filters.userId || filters.sectorId) {
+      ticketBaseWhere.project = {};
+    }
+
     if (filters.userId) {
-      ticketBaseWhere.project = {
-        responsibleUserId: filters.userId,
-      };
+      ticketBaseWhere.project.responsibleUserId = filters.userId;
+    }
+
+    if (filters.sectorId) {
+      ticketBaseWhere.project.sectorId = filters.sectorId;
     }
 
     const [totalProjects, slasOpen, slasOverdue, answeredTickets] =
@@ -103,6 +114,7 @@ export class DashboardService {
       generatedAt: now.toISOString(),
       period: filters.period ?? "all",
       userId: filters.userId ?? null,
+      sectorId: filters.sectorId ?? null,
       totalProjects,
       slasOpen,
       slasOverdue,
@@ -121,10 +133,20 @@ export class DashboardService {
       userWhere.id = filters.userId;
     }
 
+    if (filters.sectorId) {
+      userWhere.sectorId = filters.sectorId;
+    }
+
     const users = await prisma.user.findMany({
       where: userWhere,
       include: {
+        sector: true,
         projects: {
+          where: filters.sectorId
+            ? {
+                sectorId: filters.sectorId,
+              }
+            : undefined,
           include: {
             slaTickets: true,
           },
@@ -162,6 +184,8 @@ export class DashboardService {
         userId: user.id,
         name: user.name,
         phone: user.phone,
+        sectorId: user.sectorId,
+        sectorName: user.sector?.name ?? null,
         projectsCount: user.projects.length,
         totalTickets: filteredTickets.length,
         openTickets: filteredTickets.filter((ticket) => ticket.status === "open")
@@ -193,10 +217,16 @@ export class DashboardService {
       };
     }
 
+    if (filters.userId || filters.sectorId) {
+      where.project = {};
+    }
+
     if (filters.userId) {
-      where.project = {
-        responsibleUserId: filters.userId,
-      };
+      where.project.responsibleUserId = filters.userId;
+    }
+
+    if (filters.sectorId) {
+      where.project.sectorId = filters.sectorId;
     }
 
     const tickets = await prisma.slaTicket.findMany({
@@ -204,6 +234,7 @@ export class DashboardService {
       include: {
         project: {
           include: {
+            sector: true,
             responsibleUser: true,
           },
         },
@@ -225,6 +256,8 @@ export class DashboardService {
         projectId: ticket.projectId,
         projectName: ticket.project.name,
         groupName: ticket.project.groupName,
+        sectorId: ticket.project.sectorId,
+        sectorName: ticket.project.sector?.name ?? null,
         responsibleName: ticket.project.responsibleUser.name,
         responsiblePhone: ticket.project.responsibleUser.phone,
         openedAt: ticket.openedAt,
@@ -249,10 +282,16 @@ export class DashboardService {
       };
     }
 
+    if (filters.userId || filters.sectorId) {
+      where.project = {};
+    }
+
     if (filters.userId) {
-      where.project = {
-        responsibleUserId: filters.userId,
-      };
+      where.project.responsibleUserId = filters.userId;
+    }
+
+    if (filters.sectorId) {
+      where.project.sectorId = filters.sectorId;
     }
 
     const tickets = await prisma.slaTicket.findMany({
@@ -260,6 +299,7 @@ export class DashboardService {
       include: {
         project: {
           include: {
+            sector: true,
             responsibleUser: true,
           },
         },
@@ -285,6 +325,8 @@ export class DashboardService {
         projectId: ticket.projectId,
         projectName: ticket.project.name,
         groupName: ticket.project.groupName,
+        sectorId: ticket.project.sectorId,
+        sectorName: ticket.project.sector?.name ?? null,
         responsibleName: ticket.project.responsibleUser.name,
         responsiblePhone: ticket.project.responsibleUser.phone,
         openedAt: ticket.openedAt,
@@ -308,10 +350,16 @@ export class DashboardService {
       };
     }
 
+    if (filters.userId || filters.sectorId) {
+      where.project = {};
+    }
+
     if (filters.userId) {
-      where.project = {
-        responsibleUserId: filters.userId,
-      };
+      where.project.responsibleUserId = filters.userId;
+    }
+
+    if (filters.sectorId) {
+      where.project.sectorId = filters.sectorId;
     }
 
     if (filters.status && filters.status !== "all") {
@@ -323,6 +371,7 @@ export class DashboardService {
       include: {
         project: {
           include: {
+            sector: true,
             responsibleUser: true,
           },
         },
@@ -333,18 +382,19 @@ export class DashboardService {
     });
 
     return tickets.map((ticket) => {
-      const responseMinutes =
-        ticket.answeredAt
-          ? Math.floor(
-              (ticket.answeredAt.getTime() - ticket.openedAt.getTime()) / 60000
-            )
-          : null;
+      const responseMinutes = ticket.answeredAt
+        ? Math.floor(
+            (ticket.answeredAt.getTime() - ticket.openedAt.getTime()) / 60000
+          )
+        : null;
 
       return {
         id: ticket.id,
         projectId: ticket.projectId,
         projectName: ticket.project.name,
         groupName: ticket.project.groupName,
+        sectorId: ticket.project.sectorId,
+        sectorName: ticket.project.sector?.name ?? null,
         responsibleName: ticket.project.responsibleUser.name,
         responsiblePhone: ticket.project.responsibleUser.phone,
         openedAt: ticket.openedAt,

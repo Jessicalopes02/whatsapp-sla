@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 
 const items = [
   { label: "Dashboard", href: "/dashboard" },
+  { label: "LIVE", href: "/live" },
   { label: "Projetos", href: "/projects" },
-  { label: "CS", href: "/users" },
+  { label: "Usuários", href: "/users" },
   { label: "Histórico", href: "/history" },
   { label: "Configurações", href: "/settings" },
 ];
@@ -19,13 +20,11 @@ export function AppSidebar() {
       <div className="flex h-full flex-col px-5 py-6">
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Operação CS
+            Operação WhatsApp
           </p>
-          <h2 className="mt-2 text-2xl font-bold text-white">
-            SLA WhatsApp
-          </h2>
+          <h2 className="mt-2 text-2xl font-bold text-white">SLA WhatsApp</h2>
           <p className="mt-2 text-sm text-slate-400">
-            Monitoramento de atendimento e atrasos.
+            Monitoramento de atendimento, usuários e atrasos.
           </p>
         </div>
 

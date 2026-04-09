@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../../components/AppShell";
-import { getHistory } from "../../services/api";
+import { getHistory, getProjects, getUsersList } from "../../services/api";
 
 function formatDate(value: string | null) {
   if (!value) return "-";
@@ -42,13 +42,58 @@ function statusLabel(status: string) {
 export default function HistoryPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [period, setPeriod] = useState("all");
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedSectorId, setSelectedSectorId] = useState("");
+
+  const [userOptions, setUserOptions] = useState<any[]>([]);
+  const [sectorOptions, setSectorOptions] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadFilters() {
+      try {
+        const [users, projects] = await Promise.all([
+          getUsersList(),
+          getProjects(),
+        ]);
+
+        setUserOptions(users);
+
+        const sectorsMap = new Map();
+
+        projects.forEach((project: any) => {
+          if (project.sectorId && project.sector?.name) {
+            sectorsMap.set(project.sectorId, {
+              id: project.sectorId,
+              name: project.sector.name,
+            });
+          }
+        });
+
+        setSectorOptions(Array.from(sectorsMap.values()));
+      } catch (error) {
+        console.error("Erro ao carregar filtros do histórico", error);
+      }
+    }
+
+    loadFilters();
+  }, []);
 
   useEffect(() => {
     async function load() {
       try {
-        const data = await getHistory();
+        setLoading(true);
+
+        const data = await getHistory({
+          period,
+          userId: selectedUserId || undefined,
+          sectorId: selectedSectorId || undefined,
+          status: statusFilter !== "all" ? statusFilter : undefined,
+        });
+
         setItems(data);
       } catch (error) {
         console.error("Erro ao carregar histórico", error);
@@ -58,7 +103,7 @@ export default function HistoryPage() {
     }
 
     load();
-  }, []);
+  }, [period, selectedUserId, selectedSectorId, statusFilter]);
 
   const filteredItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -69,14 +114,12 @@ export default function HistoryPage() {
         item.projectName?.toLowerCase().includes(normalized) ||
         item.groupName?.toLowerCase().includes(normalized) ||
         item.responsibleName?.toLowerCase().includes(normalized) ||
-        item.responsiblePhone?.toLowerCase().includes(normalized);
+        item.responsiblePhone?.toLowerCase().includes(normalized) ||
+        item.sectorName?.toLowerCase().includes(normalized);
 
-      const matchesStatus =
-        statusFilter === "all" || item.status === statusFilter;
-
-      return matchesQuery && matchesStatus;
+      return matchesQuery;
     });
-  }, [items, query, statusFilter]);
+  }, [items, query]);
 
   const totalTickets = items.length;
   const onTimeCount = items.filter(
@@ -133,23 +176,23 @@ export default function HistoryPage() {
         </section>
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
-          <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="mb-6 flex flex-col gap-4">
             <div>
               <h2 className="text-xl font-semibold text-white">
                 Tickets processados
               </h2>
               <p className="mt-1 text-sm text-slate-400">
-                Busque por projeto, grupo ou responsável e filtre por status.
+                Busque por projeto, grupo, responsável ou setor e filtre por status.
               </p>
             </div>
 
-            <div className="flex w-full flex-col gap-3 md:flex-row xl:w-auto">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
               <input
                 type="text"
-                placeholder="Buscar projeto, grupo ou responsável..."
+                placeholder="Buscar projeto, grupo, responsável ou setor..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 md:min-w-[320px]"
+                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 xl:col-span-2"
               />
 
               <select
@@ -163,6 +206,69 @@ export default function HistoryPage() {
                 <option value="overdue">Atrasado</option>
                 <option value="open">Aberto</option>
               </select>
+
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+                className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
+              >
+                <option value="all">Todo o período</option>
+                <option value="today">Hoje</option>
+                <option value="7d">Últimos 7 dias</option>
+                <option value="30d">Últimos 30 dias</option>
+              </select>
+
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
+              >
+                <option value="">Todos os responsáveis</option>
+                {userOptions.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <select
+                value={selectedSectorId}
+                onChange={(e) => setSelectedSectorId(e.target.value)}
+                className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
+              >
+                <option value="">Todos os setores</option>
+                {sectorOptions.map((sector) => (
+                  <option key={sector.id} value={sector.id}>
+                    {sector.name}
+                  </option>
+                ))}
+              </select>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Responsável atual
+                </p>
+                <p className="mt-2 text-sm text-slate-200">
+                  {selectedUserId
+                    ? userOptions.find((u) => u.id === selectedUserId)?.name ??
+                      "Selecionado"
+                    : "Todos"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Setor atual
+                </p>
+                <p className="mt-2 text-sm text-slate-200">
+                  {selectedSectorId
+                    ? sectorOptions.find((s) => s.id === selectedSectorId)?.name ??
+                      "Selecionado"
+                    : "Todos"}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -178,6 +284,7 @@ export default function HistoryPage() {
                 <thead>
                   <tr className="border-b border-slate-800 text-left text-slate-400">
                     <th className="pb-3 pr-4 font-semibold">Projeto</th>
+                    <th className="pb-3 pr-4 font-semibold">Setor</th>
                     <th className="pb-3 pr-4 font-semibold">Responsável</th>
                     <th className="pb-3 pr-4 font-semibold">Abertura</th>
                     <th className="pb-3 pr-4 font-semibold">Deadline</th>
@@ -205,6 +312,10 @@ export default function HistoryPage() {
                               {item.groupName}
                             </span>
                           </div>
+                        </td>
+
+                        <td className="py-4 pr-4 text-slate-300">
+                          {item.sectorName ?? "-"}
                         </td>
 
                         <td className="py-4 pr-4">

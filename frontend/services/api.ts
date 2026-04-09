@@ -3,6 +3,7 @@ const API = "http://localhost:3333";
 type DashboardFilters = {
   period?: string;
   userId?: string;
+  sectorId?: string;
   status?: string;
 };
 
@@ -17,6 +18,10 @@ function buildQuery(filters?: DashboardFilters) {
     params.set("userId", filters.userId);
   }
 
+  if (filters?.sectorId) {
+    params.set("sectorId", filters.sectorId);
+  }
+
   if (filters?.status && filters.status !== "all") {
     params.set("status", filters.status);
   }
@@ -29,11 +34,7 @@ export async function getSummary(filters?: DashboardFilters) {
   const res = await fetch(`${API}/dashboard/summary${buildQuery(filters)}`, {
     cache: "no-store",
   });
-
-  if (!res.ok) {
-    throw new Error("Erro ao buscar summary");
-  }
-
+  if (!res.ok) throw new Error("Erro ao buscar summary");
   return res.json();
 }
 
@@ -41,65 +42,35 @@ export async function getUsers(filters?: DashboardFilters) {
   const res = await fetch(`${API}/dashboard/by-user${buildQuery(filters)}`, {
     cache: "no-store",
   });
-
-  if (!res.ok) {
-    throw new Error("Erro ao buscar usuários");
-  }
-
+  if (!res.ok) throw new Error("Erro ao buscar usuários");
   return res.json();
 }
 
 export async function getDelays(filters?: DashboardFilters) {
-  const res = await fetch(
-    `${API}/dashboard/open-delays${buildQuery(filters)}`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error("Erro ao buscar atrasos");
-  }
-
+  const res = await fetch(`${API}/dashboard/open-delays${buildQuery(filters)}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Erro ao buscar atrasos");
   return res.json();
 }
 
 export async function getOpenTickets(filters?: DashboardFilters) {
-  const res = await fetch(
-    `${API}/dashboard/open-tickets${buildQuery(filters)}`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error("Erro ao buscar tickets abertos");
-  }
-
+  const res = await fetch(`${API}/dashboard/open-tickets${buildQuery(filters)}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Erro ao buscar tickets abertos");
   return res.json();
 }
 
 export async function getProjects() {
-  const res = await fetch(`${API}/projects`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error("Erro ao buscar projetos");
-  }
-
+  const res = await fetch(`${API}/projects`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Erro ao buscar projetos");
   return res.json();
 }
 
 export async function getUsersList() {
-  const res = await fetch(`${API}/users`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error("Erro ao buscar lista de usuários");
-  }
-
+  const res = await fetch(`${API}/users`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Erro ao buscar lista de usuários");
   return res.json();
 }
 
@@ -107,11 +78,7 @@ export async function getHistory(filters?: DashboardFilters) {
   const res = await fetch(`${API}/dashboard/history${buildQuery(filters)}`, {
     cache: "no-store",
   });
-
-  if (!res.ok) {
-    throw new Error("Erro ao buscar histórico");
-  }
-
+  if (!res.ok) throw new Error("Erro ao buscar histórico");
   return res.json();
 }
 
@@ -128,9 +95,24 @@ export async function createUser(data: {
     body: JSON.stringify(data),
   });
 
-  if (!res.ok) {
-    throw new Error("Erro ao criar usuário");
-  }
+  if (!res.ok) throw new Error("Erro ao criar usuário");
+  return res.json();
+}
 
+export async function getDebugNotifications() {
+  const res = await fetch(`${API}/debug/notifications`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) throw new Error("Erro ao buscar notificações de debug");
+  return res.json();
+}
+
+export async function getFailedDebugNotifications() {
+  const res = await fetch(`${API}/debug/notifications/failed`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) throw new Error("Erro ao buscar falhas de notificações");
   return res.json();
 }

@@ -6,12 +6,25 @@ datasource db {
   provider = "postgresql"
 }
 
+model Sector {
+  id                String    @id @default(uuid())
+  name              String    @unique
+  defaultSlaMinutes Int       @default(15)
+  active            Boolean   @default(true)
+  users             User[]
+  projects          Project[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
 model User {
   id        String    @id @default(uuid())
   name      String
   phone     String    @unique
   role      String
   active    Boolean   @default(true)
+  sectorId  String?
+  sector    Sector?   @relation(fields: [sectorId], references: [id])
   projects  Project[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -23,10 +36,12 @@ model Project {
   groupExternalId   String      @unique
   groupName         String
   responsibleUserId String
+  sectorId          String?
   slaMinutes        Int         @default(15)
   active            Boolean     @default(true)
 
   responsibleUser   User        @relation(fields: [responsibleUserId], references: [id])
+  sector            Sector?     @relation(fields: [sectorId], references: [id])
   messages          Message[]
   slaTickets        SlaTicket[]
 
@@ -49,30 +64,43 @@ model Message {
 }
 
 model SlaTicket {
-  id                      String    @id @default(uuid())
-  projectId               String
-  openedMessageId         String
-  openedAt                DateTime
-  deadlineAt              DateTime
-  answeredMessageId       String?
-  answeredAt              DateTime?
-  status                  String
-  delaySeconds            Int?
-  privateNotificationSent Boolean   @default(false)
+  id                       String         @id @default(uuid())
+  projectId                String
+  openedMessageId          String
+  openedAt                 DateTime
+  deadlineAt               DateTime
+  answeredMessageId        String?
+  answeredAt               DateTime?
+  status                   String
+  delaySeconds             Int?
+  warningNotificationSent  Boolean        @default(false)
+  delayNotificationSent    Boolean        @default(false)
+  privateNotificationSent  Boolean        @default(false)
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
 
-  project                 Project   @relation(fields: [projectId], references: [id])
-
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  project                  Project        @relation(fields: [projectId], references: [id])
+  notifications            Notification[]
 }
 
 model Notification {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   slaTicketId String
   userId      String
   type        String
   status      String
   payload     Json
   sentAt      DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
+
+  slaTicket   SlaTicket @relation(fields: [slaTicketId], references: [id])
+}
+
+model PendingGroup {
+  id              String   @id @default(uuid())
+  groupExternalId String   @unique
+  groupName       String?
+  responsibleName String?
+  lastMessageAt   DateTime
+  createdAt       DateTime @default(now())
 }

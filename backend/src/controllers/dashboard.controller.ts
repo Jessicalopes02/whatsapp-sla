@@ -9,6 +9,8 @@ function getFilters(req: Request) {
       typeof req.query.period === "string" ? req.query.period : undefined,
     userId:
       typeof req.query.userId === "string" ? req.query.userId : undefined,
+    sectorId:
+      typeof req.query.sectorId === "string" ? req.query.sectorId : undefined,
     status:
       typeof req.query.status === "string" ? req.query.status : undefined,
   };

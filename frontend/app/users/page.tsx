@@ -54,6 +54,24 @@ export default function UsersPage() {
   const activeUsers = users.filter((user) => user.active).length;
   const inactiveUsers = users.filter((user) => !user.active).length;
   const csUsers = users.filter((user) => user.role === "cs").length;
+  const supportUsers = users.filter(
+    (user) => user.role === "sales_support"
+  ).length;
+
+  function roleLabel(role: string) {
+    switch (role) {
+      case "cs":
+        return "CS";
+      case "sales_support":
+        return "Sales Support";
+      case "manager":
+        return "Manager";
+      case "admin":
+        return "Admin";
+      default:
+        return role;
+    }
+  }
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
@@ -85,10 +103,10 @@ export default function UsersPage() {
           <div>
             <p className="text-sm font-medium text-slate-400">Cadastro</p>
 
-            <h1 className="text-3xl font-bold text-white">CS</h1>
+            <h1 className="text-3xl font-bold text-white">Usuários</h1>
 
             <p className="mt-2 text-slate-400">
-              Lista de responsáveis monitorados pelo sistema.
+              Gerencie CS e Sales Support do sistema.
             </p>
           </div>
 
@@ -97,23 +115,30 @@ export default function UsersPage() {
             onClick={() => setIsModalOpen(true)}
             className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
           >
-            Novo CS
+            Novo Usuário
           </button>
         </header>
 
+        {/* 🔥 CARDS */}
         <section className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
-            title="Total de usuários"
+            title="Total"
             value={totalUsers}
-            hint="Usuários cadastrados no sistema"
-            tone="default"
+            hint="Usuários cadastrados"
           />
 
           <SummaryCard
-            title="CS ativos"
+            title="CS"
             value={csUsers}
-            hint="Usuários com papel de CS"
+            hint="Customer Success"
             tone="success"
+          />
+
+          <SummaryCard
+            title="Sales Support"
+            value={supportUsers}
+            hint="Suporte comercial"
+            tone="default"
           />
 
           <SummaryCard
@@ -122,20 +147,14 @@ export default function UsersPage() {
             hint="Usuários em operação"
             tone="success"
           />
-
-          <SummaryCard
-            title="Inativos"
-            value={inactiveUsers}
-            hint="Usuários pausados ou desativados"
-            tone="danger"
-          />
         </section>
 
+        {/* 🔥 LISTA */}
         <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-white">
-                Lista de responsáveis
+                Lista de usuários
               </h2>
               <p className="mt-1 text-sm text-slate-400">
                 Busque por nome, telefone ou cargo.
@@ -145,165 +164,102 @@ export default function UsersPage() {
             <div className="w-full lg:max-w-md">
               <input
                 type="text"
-                placeholder="Buscar nome, telefone ou cargo..."
+                placeholder="Buscar..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white"
               />
             </div>
           </div>
 
           {loading ? (
-            <p className="text-slate-400">Carregando usuários...</p>
-          ) : filteredUsers.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-400">
-              Nenhum usuário encontrado para essa busca.
-            </div>
+            <p className="text-slate-400">Carregando...</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-800 text-left text-slate-400">
-                    <th className="pb-3 pr-4 font-semibold">Nome</th>
-                    <th className="pb-3 pr-4 font-semibold">Telefone</th>
-                    <th className="pb-3 pr-4 font-semibold">Cargo</th>
-                    <th className="pb-3 font-semibold">Status</th>
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-left text-slate-400">
+                  <th className="pb-3">Nome</th>
+                  <th className="pb-3">Telefone</th>
+                  <th className="pb-3">Cargo</th>
+                  <th className="pb-3">Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="border-b border-slate-800">
+                    <td className="py-4 text-white">{user.name}</td>
+                    <td className="py-4 text-slate-300">{user.phone}</td>
+
+                    <td className="py-4">
+                      <span className="rounded-full bg-sky-500/20 px-3 py-1 text-xs text-sky-300">
+                        {roleLabel(user.role)}
+                      </span>
+                    </td>
+
+                    <td className="py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs ${
+                          user.active
+                            ? "bg-emerald-500/20 text-emerald-300"
+                            : "bg-slate-700 text-slate-300"
+                        }`}
+                      >
+                        {user.active ? "Ativo" : "Inativo"}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-
-                <tbody>
-                  {filteredUsers.map((user) => (
-                    <tr
-                      key={user.id}
-                      className="border-b border-slate-800 last:border-0"
-                    >
-                      <td className="py-4 pr-4">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-white">
-                            {user.name}
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            Usuário do sistema
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="py-4 pr-4 text-slate-300">
-                        {user.phone}
-                      </td>
-
-                      <td className="py-4 pr-4">
-                        <span className="rounded-full bg-sky-500/15 px-3 py-1 text-xs font-semibold text-sky-300">
-                          {user.role}
-                        </span>
-                      </td>
-
-                      <td className="py-4">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            user.active
-                              ? "bg-emerald-500/20 text-emerald-300"
-                              : "bg-slate-700 text-slate-300"
-                          }`}
-                        >
-                          {user.active ? "Ativo" : "Inativo"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           )}
         </section>
 
+        {/* 🔥 MODAL */}
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-            <div className="w-full max-w-lg rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
-              <div className="mb-6 flex items-start justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-white">Novo CS</h2>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Cadastre um novo responsável para métricas e atendimento.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"
-                >
-                  Fechar
-                </button>
-              </div>
+          <div className="fixed inset-0 flex items-center justify-center bg-black/60">
+            <div className="w-full max-w-lg bg-slate-900 p-6 rounded-2xl">
+              <h2 className="text-white text-xl mb-4">Novo Usuário</h2>
 
               <form onSubmit={handleCreateUser} className="space-y-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">
-                    Nome
-                  </label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    required
-                    className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500"
-                    placeholder="Ex.: Jessica"
-                  />
-                </div>
+                <input
+                  placeholder="Nome"
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, name: e.target.value }))
+                  }
+                  className="w-full p-3 bg-slate-800 text-white rounded"
+                />
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">
-                    Número
-                  </label>
-                  <input
-                    type="text"
-                    value={form.phone}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, phone: e.target.value }))
-                    }
-                    required
-                    className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500"
-                    placeholder="Ex.: 5511999999999"
-                  />
-                </div>
+                <input
+                  placeholder="Telefone"
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, phone: e.target.value }))
+                  }
+                  className="w-full p-3 bg-slate-800 text-white rounded"
+                />
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">
-                    Cargo
-                  </label>
-                  <select
-                    value={form.role}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, role: e.target.value }))
-                    }
-                    className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none"
-                  >
-                    <option value="cs">cs</option>
-                    <option value="manager">manager</option>
-                    <option value="admin">admin</option>
-                  </select>
-                </div>
+                <select
+                  value={form.role}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, role: e.target.value }))
+                  }
+                  className="w-full p-3 bg-slate-800 text-white rounded"
+                >
+                  <option value="cs">CS</option>
+                  <option value="sales_support">Sales Support</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin</option>
+                </select>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="rounded-2xl border border-slate-700 px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-slate-800"
-                  >
-                    Cancelar
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {saving ? "Salvando..." : "Salvar CS"}
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full bg-sky-600 py-3 rounded text-white"
+                >
+                  {saving ? "Salvando..." : "Salvar"}
+                </button>
               </form>
             </div>
           </div>
@@ -313,28 +269,12 @@ export default function UsersPage() {
   );
 }
 
-function SummaryCard({
-  title,
-  value,
-  hint,
-  tone = "default",
-}: {
-  title: string;
-  value: string | number;
-  hint: string;
-  tone?: "default" | "success" | "danger";
-}) {
-  const toneMap = {
-    default: "border-slate-800 bg-slate-900 text-white",
-    success: "border-emerald-800 bg-emerald-950/30 text-emerald-200",
-    danger: "border-rose-800 bg-rose-950/30 text-rose-200",
-  };
-
+function SummaryCard({ title, value, hint, tone = "default" }: any) {
   return (
-    <div className={`rounded-3xl border p-5 shadow-sm ${toneMap[tone]}`}>
-      <p className="text-sm font-medium opacity-80">{title}</p>
-      <p className="mt-3 text-3xl font-bold tracking-tight">{value}</p>
-      <p className="mt-2 text-sm opacity-70">{hint}</p>
+    <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+      <p className="text-slate-400 text-sm">{title}</p>
+      <p className="text-white text-xl font-bold">{value}</p>
+      <p className="text-slate-500 text-xs">{hint}</p>
     </div>
   );
 }

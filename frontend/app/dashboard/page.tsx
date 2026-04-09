@@ -8,6 +8,7 @@ import {
   getDelays,
   getOpenTickets,
   getUsersList,
+  getProjects,
 } from "../../services/api";
 import { SummaryCards } from "../../components/SummaryCards";
 import { UsersTable } from "../../components/UsersTable";
@@ -23,23 +24,55 @@ export default function DashboardPage() {
   const [delays, setDelays] = useState<any[]>([]);
   const [openTickets, setOpenTickets] = useState<any[]>([]);
   const [userOptions, setUserOptions] = useState<any[]>([]);
+  const [sectorOptions, setSectorOptions] = useState<any[]>([]);
+
   const [period, setPeriod] = useState("all");
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedSectorId, setSelectedSectorId] = useState("");
+
   const [loading, setLoading] = useState(true);
 
+  // 🔹 Carregar usuários
   useEffect(() => {
     async function loadUsersOptions() {
       try {
         const data = await getUsersList();
         setUserOptions(data);
       } catch (error) {
-        console.error("Erro ao carregar opções de usuários", error);
+        console.error("Erro ao carregar usuários", error);
       }
     }
 
     loadUsersOptions();
   }, []);
 
+  // 🔹 Carregar setores (via projects)
+  useEffect(() => {
+    async function loadSectors() {
+      try {
+        const projects = await getProjects();
+
+        const sectorsMap = new Map();
+
+        projects.forEach((p: any) => {
+          if (p.sectorId && p.sector?.name) {
+            sectorsMap.set(p.sectorId, {
+              id: p.sectorId,
+              name: p.sector.name,
+            });
+          }
+        });
+
+        setSectorOptions(Array.from(sectorsMap.values()));
+      } catch (error) {
+        console.error("Erro ao carregar setores", error);
+      }
+    }
+
+    loadSectors();
+  }, []);
+
+  // 🔹 Carregar dashboard
   useEffect(() => {
     async function loadDashboard() {
       try {
@@ -48,6 +81,7 @@ export default function DashboardPage() {
         const filters = {
           period,
           userId: selectedUserId || undefined,
+          sectorId: selectedSectorId || undefined,
         };
 
         const [s, u, d, o] = await Promise.all([
@@ -69,7 +103,7 @@ export default function DashboardPage() {
     }
 
     loadDashboard();
-  }, [period, selectedUserId]);
+  }, [period, selectedUserId, selectedSectorId]);
 
   if (loading || !summary) {
     return (
@@ -85,14 +119,16 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-7xl px-6 py-8">
           <header className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-400">Operação CS</p>
+              <p className="text-sm font-medium text-slate-400">
+                Operação Multi-Setor
+              </p>
 
               <h1 className="text-3xl font-bold tracking-tight text-white">
                 Dashboard SLA WhatsApp
               </h1>
 
               <p className="mt-2 text-sm text-slate-400">
-                Acompanhe projetos, atrasos e tempo médio de resposta do time.
+                Acompanhe projetos, atrasos e tempo médio de resposta por setor.
               </p>
             </div>
 
@@ -104,23 +140,25 @@ export default function DashboardPage() {
             </div>
           </header>
 
+          {/* 🔥 FILTROS */}
           <section className="mb-8 rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
             <div className="mb-4">
               <h2 className="text-xl font-semibold text-white">Filtros</h2>
               <p className="mt-1 text-sm text-slate-400">
-                Filtre o painel por período e responsável.
+                Filtre por período, responsável e setor.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+              {/* PERÍODO */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-300">
+                <label className="mb-2 block text-sm text-slate-300">
                   Período
                 </label>
                 <select
                   value={period}
                   onChange={(e) => setPeriod(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
+                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white"
                 >
                   <option value="all">Todo o período</option>
                   <option value="today">Hoje</option>
@@ -129,16 +167,17 @@ export default function DashboardPage() {
                 </select>
               </div>
 
+              {/* CS */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-300">
+                <label className="mb-2 block text-sm text-slate-300">
                   CS
                 </label>
                 <select
                   value={selectedUserId}
                   onChange={(e) => setSelectedUserId(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
+                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white"
                 >
-                  <option value="">Todos os CS</option>
+                  <option value="">Todos</option>
                   {userOptions.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.name}
@@ -147,81 +186,58 @@ export default function DashboardPage() {
                 </select>
               </div>
 
+              {/* 🔥 SETOR */}
+              <div>
+                <label className="mb-2 block text-sm text-slate-300">
+                  Setor
+                </label>
+                <select
+                  value={selectedSectorId}
+                  onChange={(e) => setSelectedSectorId(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white"
+                >
+                  <option value="">Todos os setores</option>
+                  {sectorOptions.map((sector) => (
+                    <option key={sector.id} value={sector.id}>
+                      {sector.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* INFO */}
               <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Período atual
-                </p>
-                <p className="mt-2 text-sm text-slate-200">
-                  {period === "all"
-                    ? "Todo o período"
-                    : period === "today"
-                    ? "Hoje"
-                    : period === "7d"
-                    ? "Últimos 7 dias"
-                    : "Últimos 30 dias"}
-                </p>
+                <p className="text-xs text-slate-500">Período</p>
+                <p className="text-sm text-white">{period}</p>
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Responsável atual
-                </p>
-                <p className="mt-2 text-sm text-slate-200">
-                  {selectedUserId
-                    ? userOptions.find((u) => u.id === selectedUserId)?.name ??
-                      "Selecionado"
+                <p className="text-xs text-slate-500">Setor</p>
+                <p className="text-sm text-white">
+                  {selectedSectorId
+                    ? sectorOptions.find((s) => s.id === selectedSectorId)
+                        ?.name
                     : "Todos"}
                 </p>
               </div>
             </div>
           </section>
 
+          {/* CARDS */}
           <section className="mb-8">
             <SummaryCards summary={summary} />
           </section>
 
-          <section className="mb-8 rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
-            <div className="mb-5">
-              <h2 className="text-xl font-semibold text-slate-100">
-                Atendimento ao vivo
-              </h2>
-
-              <p className="text-sm text-slate-400">
-                Tickets abertos aguardando primeira resposta.
-              </p>
-            </div>
-
+          {/* OPEN */}
+          <section className="mb-8 rounded-3xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl text-white mb-4">Atendimento ao vivo</h2>
             <OpenTicketsTable items={openTickets} />
           </section>
 
-          <section className="mb-8 grid grid-cols-1 gap-8 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
-              <div className="mb-5">
-                <h2 className="text-xl font-semibold text-slate-100">
-                  Métricas por CS
-                </h2>
-
-                <p className="text-sm text-slate-400">
-                  Visão consolidada por responsável.
-                </p>
-              </div>
-
-              <UsersTable items={users} />
-            </div>
-
-            <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
-              <div className="mb-5">
-                <h2 className="text-xl font-semibold text-slate-100">
-                  Atrasos em aberto
-                </h2>
-
-                <p className="text-sm text-slate-400">
-                  Tickets com SLA vencido aguardando retorno.
-                </p>
-              </div>
-
-              <DelaysTable items={delays} />
-            </div>
+          {/* USERS + DELAYS */}
+          <section className="grid grid-cols-1 gap-8 xl:grid-cols-2">
+            <UsersTable items={users} />
+            <DelaysTable items={delays} />
           </section>
         </div>
       </main>
