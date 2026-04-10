@@ -52,11 +52,14 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString("pt-BR");
 }
 
+const API =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3333";
+
 async function closeTicket(
   id: string,
   status: ManualCloseStatus
 ): Promise<void> {
-  const res = await fetch(`http://localhost:3333/sla-tickets/${id}/close`, {
+  const res = await fetch(`${API}/sla-tickets/${id}/close`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -65,6 +68,8 @@ async function closeTicket(
   });
 
   if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Erro ao encerrar ticket:", errorText);
     throw new Error("Erro ao encerrar ticket");
   }
 }
