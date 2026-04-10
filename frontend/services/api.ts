@@ -1,4 +1,5 @@
-const API = process.env.NEXT_PUBLIC_API_URL!;
+const API =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3333";
 
 type DashboardFilters = {
   period?: string;
@@ -64,7 +65,13 @@ export async function getOpenTickets(filters?: DashboardFilters) {
 
 export async function getProjects() {
   const res = await fetch(`${API}/projects`, { cache: "no-store" });
-  if (!res.ok) throw new Error("Erro ao buscar projetos");
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Erro /projects:", res.status, text);
+    throw new Error(`Erro ao buscar projetos: ${res.status} - ${text}`);
+  }
+
   return res.json();
 }
 
