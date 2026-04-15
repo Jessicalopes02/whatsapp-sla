@@ -27,13 +27,16 @@ export function startCheckOverdueSlasJob() {
       });
 
       for (const ticket of warningTickets) {
+        if (!ticket.project.responsibleUser) {
+          continue;
+        }
+
         const minutesToDeadline = Math.floor(
           (ticket.deadlineAt.getTime() - now.getTime()) / 60000
         );
 
         const alreadyWarned = ticket.notifications.some((notification) => {
           const payload = notification.payload as { kind?: string };
-
           return (
             notification.type === "private_whatsapp_alert" &&
             payload.kind === "warning"
@@ -80,6 +83,10 @@ export function startCheckOverdueSlasJob() {
       });
 
       for (const ticket of overdueTickets) {
+        if (!ticket.project.responsibleUser) {
+          continue;
+        }
+
         const delayMinutes = Math.floor(
           (now.getTime() - ticket.deadlineAt.getTime()) / 60000
         );
