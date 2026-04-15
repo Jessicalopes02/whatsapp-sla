@@ -6,3 +6,4 @@ const controller = new ProjectsController();
 
 projectsRoutes.get("/", controller.list);
 projectsRoutes.post("/", controller.create);
+projectsRoutes.patch("/:id", controller.update);

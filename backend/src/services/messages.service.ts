@@ -18,13 +18,10 @@ function normalizePhone(phone: string) {
   return phone.replace(/\D/g, "");
 }
 
-function normalizeName(name?: string | null) {
-  return (name ?? "").trim().toLowerCase();
-}
-
 function getDefaultSlaMinutesByRole(role?: string) {
   if (role === "sales_support") return 120;
   if (role === "cs") return 60;
+  if (role === "comercial") return 60;
   return 60;
 }
 
@@ -34,73 +31,56 @@ export class MessagesService {
     console.log("GROUP NAME:", data.groupName);
     console.log("RESPONSÁVEL RECEBIDO:", data.responsibleName);
 
+    const sentAt = new Date(data.sentAt);
+
     let project = await prisma.project.findUnique({
       where: { groupExternalId: data.groupExternalId },
       include: { responsibleUser: true },
     });
 
-    if (!project && data.responsibleName) {
-      const normalizedResponsibleName = normalizeName(data.responsibleName);
-
-      const users = await prisma.user.findMany({
-        where: { active: true },
+    // 🔥 CRIA PROJETO DIRETO (SEM PENDING)
+    if (!project) {
+      project = await prisma.project.create({
+        data: {
+          name: data.groupName ?? `Projeto ${data.groupExternalId}`,
+          groupExternalId: data.groupExternalId,
+          groupName: data.groupName ?? `Grupo ${data.groupExternalId}`,
+          responsibleUserId: null,
+          sectorId: null,
+          slaMinutes: 60,
+          active: true,
+          lastMessageBody: data.body ?? null,
+          lastSenderName: data.senderName ?? null,
+          lastMessageAt: sentAt,
+        },
+        include: {
+          responsibleUser: true,
+        },
       });
 
-      const responsibleUser =
-        users.find((user) => {
-          const userName = normalizeName(user.name);
-
-          return (
-            userName === normalizedResponsibleName ||
-            userName.includes(normalizedResponsibleName) ||
-            normalizedResponsibleName.includes(userName)
-          );
-        }) ?? null;
-
-      if (responsibleUser) {
-        project = await prisma.project.create({
-          data: {
-            name: data.groupName ?? `Projeto ${data.groupExternalId}`,
-            groupExternalId: data.groupExternalId,
-            groupName: data.groupName ?? `Grupo ${data.groupExternalId}`,
-            responsibleUserId: responsibleUser.id,
-            slaMinutes: getDefaultSlaMinutesByRole(responsibleUser.role),
-            active: true,
-          },
-          include: {
-            responsibleUser: true,
-          },
-        });
-
-        await prisma.pendingGroup.deleteMany({
-          where: { groupExternalId: data.groupExternalId },
-        });
-
-        console.log("PROJECT CRIADO AUTOMATICAMENTE:", project.id);
-      }
+      console.log("PROJECT CRIADO DIRETO:", project.id);
+    } else {
+      // 🔁 ATUALIZA ÚLTIMA MENSAGEM
+      project = await prisma.project.update({
+        where: { id: project.id },
+        data: {
+          name: project.name || data.groupName || `Projeto ${data.groupExternalId}`,
+          groupName: data.groupName ?? project.groupName,
+          lastMessageBody: data.body ?? project.lastMessageBody,
+          lastSenderName: data.senderName ?? project.lastSenderName,
+          lastMessageAt: sentAt,
+        },
+        include: {
+          responsibleUser: true,
+        },
+      });
     }
 
+    // 🚫 PROTEÇÃO (TS + runtime)
     if (!project) {
-      await prisma.pendingGroup.upsert({
-        where: {
-          groupExternalId: data.groupExternalId,
-        },
-        update: {
-          groupName: data.groupName ?? undefined,
-          responsibleName: data.responsibleName ?? undefined,
-          lastMessageAt: new Date(data.sentAt),
-        },
-        create: {
-          groupExternalId: data.groupExternalId,
-          groupName: data.groupName ?? null,
-          responsibleName: data.responsibleName ?? null,
-          lastMessageAt: new Date(data.sentAt),
-        },
-      });
-
       return {
         ignored: true,
-        reason: "group_pending_identification",
+        reason: "project_not_available_after_upsert",
         groupExternalId: data.groupExternalId,
       };
     }
@@ -110,17 +90,18 @@ export class MessagesService {
     }
 
     const normalizedSenderPhone = normalizePhone(data.senderPhone);
-    const normalizedResponsiblePhone = normalizePhone(
-      project.responsibleUser.phone
-    );
+
+    const normalizedResponsiblePhone = project.responsibleUser?.phone
+      ? normalizePhone(project.responsibleUser.phone)
+      : null;
 
     const senderType =
+      normalizedResponsiblePhone &&
       normalizedSenderPhone === normalizedResponsiblePhone
         ? "responsible"
         : "customer";
 
-    const sentAt = new Date(data.sentAt);
-
+    // 💬 SALVA MENSAGEM
     const message = await prisma.message.upsert({
       where: { externalMessageId: data.externalMessageId },
       update: {},
@@ -135,6 +116,40 @@ export class MessagesService {
       },
     });
 
+    // 🚧 SÓ COMEÇA SLA SE PROJETO ESTIVER CONFIGURADO
+    const projectReadyForSla =
+      !!project.responsibleUserId && !!project.sectorId;
+
+    if (!projectReadyForSla) {
+      return {
+        success: true,
+        messageId: message.id,
+        senderType,
+        projectId: project.id,
+        projectName: project.name,
+        pendingConfiguration: true,
+        reason: "project_without_responsible_or_sector",
+      };
+    }
+
+    // 🔁 AJUSTA SLA AUTOMATICAMENTE PELO CARGO
+    if (project.responsibleUser) {
+      const targetSla = getDefaultSlaMinutesByRole(project.responsibleUser.role);
+
+      if (project.slaMinutes !== targetSla) {
+        project = await prisma.project.update({
+          where: { id: project.id },
+          data: {
+            slaMinutes: targetSla,
+          },
+          include: {
+            responsibleUser: true,
+          },
+        });
+      }
+    }
+
+    // 📥 MENSAGEM DO CLIENTE
     if (senderType === "customer") {
       await slaService.handleIncomingCustomerMessage({
         projectId: project.id,
@@ -143,6 +158,7 @@ export class MessagesService {
       });
     }
 
+    // 📤 RESPOSTA DO RESPONSÁVEL
     if (senderType === "responsible") {
       await slaService.handleResponsibleReply({
         projectId: project.id,
@@ -157,6 +173,7 @@ export class MessagesService {
       senderType,
       projectId: project.id,
       projectName: project.name,
+      pendingConfiguration: false,
     };
   }
 }
