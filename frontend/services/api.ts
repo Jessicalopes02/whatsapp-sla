@@ -123,3 +123,41 @@ export async function getFailedDebugNotifications() {
   if (!res.ok) throw new Error("Erro ao buscar falhas de notificações");
   return res.json();
 }
+
+export async function updateProject(
+  id: string,
+  data: {
+    responsibleUserId?: string | null;
+    sectorId?: string | null;
+    slaMinutes?: number;
+    active?: boolean;
+  }
+) {
+  const res = await fetch(`${API}/projects/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Erro ao atualizar projeto:", res.status, text);
+    throw new Error(`Erro ao atualizar projeto: ${res.status} - ${text}`);
+  }
+
+  return res.json();
+}
+
+export async function getSectors() {
+  const res = await fetch(`${API}/sectors`, { cache: "no-store" });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Erro /sectors:", res.status, text);
+    throw new Error(`Erro ao buscar setores: ${res.status} - ${text}`);
+  }
+
+  return res.json();
+}
