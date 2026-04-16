@@ -7,6 +7,7 @@ import { debugRoutes } from "./routes/debug.routes";
 import { dashboardRoutes } from "./routes/dashboard.routes";
 import { timelinesRoutes } from "./routes/timelines.routes";
 import { slaTicketsRoutes } from "./routes/sla-tickets.routes";
+import { sectorsRoutes } from "./routes/sectors.routes";
 
 export const app = express();
 
@@ -45,3 +46,4 @@ app.use("/debug", debugRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/integrations/timelines", timelinesRoutes);
 app.use("/sla-tickets", slaTicketsRoutes);
+app.use("/sectors", sectorsRoutes);
