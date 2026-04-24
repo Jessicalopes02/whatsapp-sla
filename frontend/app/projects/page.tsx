@@ -18,9 +18,6 @@ type ProjectItem = {
   sectorId?: string | null;
   slaMinutes: number;
   active: boolean;
-  lastMessageBody?: string | null;
-  lastSenderName?: string | null;
-  lastMessageAt?: string | null;
   responsibleUser?: {
     id: string;
     name: string;
@@ -48,11 +45,6 @@ type SectorItem = {
   defaultSlaMinutes: number;
   active: boolean;
 };
-
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-  return new Date(value).toLocaleString("pt-BR");
-}
 
 function getDefaultSlaByRole(role?: string) {
   if (role === "sales_support") return 120;
@@ -87,25 +79,57 @@ function ProjectCard({
   sectors: SectorItem[];
   onSaved: () => Promise<void>;
 }) {
+  const isConfigured = !!project.responsibleUserId && !!project.sectorId;
+
+  const [isEditing, setIsEditing] = useState(!isConfigured);
   const [selectedUserId, setSelectedUserId] = useState(
     project.responsibleUserId ?? ""
   );
-  const [selectedSectorId, setSelectedSectorId] = useState(project.sectorId ?? "");
+  const [selectedSectorId, setSelectedSectorId] = useState(
+    project.sectorId ?? ""
+  );
+  const [slaMinutes, setSlaMinutes] = useState(project.slaMinutes || 60);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setSelectedUserId(project.responsibleUserId ?? "");
+    setSelectedSectorId(project.sectorId ?? "");
+    setSlaMinutes(project.slaMinutes || 60);
+    setIsEditing(!isConfigured);
+  }, [
+    project.id,
+    project.responsibleUserId,
+    project.sectorId,
+    project.slaMinutes,
+    isConfigured,
+  ]);
+
+  function handleUserChange(userId: string) {
+    setSelectedUserId(userId);
+
+    const selectedUser = users.find((user) => user.id === userId);
+    if (selectedUser) {
+      setSlaMinutes(getDefaultSlaByRole(selectedUser.role));
+    }
+  }
 
   async function handleSave() {
     try {
+      if (!selectedUserId || !selectedSectorId) {
+        alert("Selecione responsável e setor.");
+        return;
+      }
+
       setSaving(true);
 
-      const selectedUser = users.find((user) => user.id === selectedUserId);
-
       await updateProject(project.id, {
-        responsibleUserId: selectedUserId || null,
-        sectorId: selectedSectorId || null,
-        slaMinutes: getDefaultSlaByRole(selectedUser?.role),
+        responsibleUserId: selectedUserId,
+        sectorId: selectedSectorId,
+        slaMinutes,
       });
 
       await onSaved();
+      setIsEditing(false);
     } catch (error) {
       console.error("Erro ao atualizar projeto", error);
       alert("Não foi possível salvar o projeto.");
@@ -126,87 +150,144 @@ function ProjectCard({
         </p>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Última mensagem
-        </p>
+      {!isEditing ? (
+        <>
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Responsável
+              </p>
+              <p className="mt-3 text-sm text-slate-200">
+                {project.responsibleUser
+                  ? `${project.responsibleUser.name} (${project.responsibleUser.phone})`
+                  : "Não definido"}
+              </p>
+            </div>
 
-        <p className="mt-3 text-sm text-slate-200">
-          {project.lastMessageBody ?? "Nenhuma mensagem registrada."}
-        </p>
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Setor
+              </p>
+              <p className="mt-3 text-sm text-slate-200">
+                {project.sector?.name ?? "Não definido"}
+              </p>
+            </div>
+          </div>
 
-        <div className="mt-3 flex flex-col gap-1 text-xs text-slate-500">
-          <span>Remetente: {project.lastSenderName ?? "-"}</span>
-          <span>Horário: {formatDate(project.lastMessageAt)}</span>
-        </div>
-      </div>
+          <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300">
+            <p>SLA atual: {project.slaMinutes} min</p>
+            <p className="mt-1">
+              Status: {project.active ? "Ativo" : "Inativo"}
+            </p>
+          </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Responsável
-          </label>
-
-          <select
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value)}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="mt-4 w-full rounded-xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
           >
-            <option value="">Selecionar responsável</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name} ({user.role})
-              </option>
-            ))}
-          </select>
+            Editar projeto
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="mt-4 rounded-2xl border border-amber-800 bg-amber-950/20 p-4">
+            <p className="text-sm font-semibold text-amber-300">
+              {isConfigured ? "Edição do projeto" : "Cadastro pendente"}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              Defina responsável, setor e SLA para ativar o fluxo corretamente.
+            </p>
+          </div>
 
-          <p className="mt-2 text-xs text-slate-500">
-            Atual:{" "}
-            {project.responsibleUser
-              ? `${project.responsibleUser.name} (${project.responsibleUser.phone})`
-              : "Não definido"}
-          </p>
-        </div>
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Responsável
+              </label>
 
-        <div>
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Setor
-          </label>
+              <select
+                value={selectedUserId}
+                onChange={(e) => handleUserChange(e.target.value)}
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
+              >
+                <option value="">Selecionar responsável</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.role})
+                  </option>
+                ))}
+              </select>
 
-          <select
-            value={selectedSectorId}
-            onChange={(e) => setSelectedSectorId(e.target.value)}
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
-          >
-            <option value="">Selecionar setor</option>
-            {sectors.map((sector) => (
-              <option key={sector.id} value={sector.id}>
-                {sector.name}
-              </option>
-            ))}
-          </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Atual:{" "}
+                {project.responsibleUser
+                  ? `${project.responsibleUser.name} (${project.responsibleUser.phone})`
+                  : "Não definido"}
+              </p>
+            </div>
 
-          <p className="mt-2 text-xs text-slate-500">
-            Atual: {project.sector?.name ?? "Não definido"}
-          </p>
-        </div>
-      </div>
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Setor
+              </label>
 
-      <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300">
-        <p>SLA atual: {project.slaMinutes} min</p>
-        <p className="mt-1">
-          Status: {project.active ? "Ativo" : "Inativo"}
-        </p>
-      </div>
+              <select
+                value={selectedSectorId}
+                onChange={(e) => setSelectedSectorId(e.target.value)}
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
+              >
+                <option value="">Selecionar setor</option>
+                {sectors.map((sector) => (
+                  <option key={sector.id} value={sector.id}>
+                    {sector.name}
+                  </option>
+                ))}
+              </select>
 
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={saving}
-        className="mt-4 w-full rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {saving ? "Salvando..." : "Salvar projeto"}
-      </button>
+              <p className="mt-2 text-xs text-slate-500">
+                Atual: {project.sector?.name ?? "Não definido"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+              SLA (minutos)
+            </label>
+
+            <input
+              type="number"
+              min={1}
+              value={slaMinutes}
+              onChange={(e) => setSlaMinutes(Number(e.target.value))}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
+            />
+          </div>
+
+          <div className="mt-4 flex gap-3">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "Salvando..." : isConfigured ? "Salvar edição" : "Cadastrar projeto"}
+            </button>
+
+            {isConfigured && (
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                disabled={saving}
+                className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -253,9 +334,7 @@ export default function ProjectsPage() {
         project.groupName?.toLowerCase().includes(normalized) ||
         project.responsibleUser?.name?.toLowerCase().includes(normalized) ||
         project.responsibleUser?.phone?.toLowerCase().includes(normalized) ||
-        project.sector?.name?.toLowerCase().includes(normalized) ||
-        project.lastMessageBody?.toLowerCase().includes(normalized) ||
-        project.lastSenderName?.toLowerCase().includes(normalized);
+        project.sector?.name?.toLowerCase().includes(normalized);
 
       const matchesSector =
         !selectedSectorId || project.sectorId === selectedSectorId;
@@ -293,7 +372,7 @@ export default function ProjectsPage() {
         <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <input
             type="text"
-            placeholder="Buscar projeto, grupo, mensagem ou responsável..."
+            placeholder="Buscar projeto, grupo ou responsável..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white"
