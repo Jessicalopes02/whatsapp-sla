@@ -318,7 +318,7 @@ export default function ProjectsPage() {
       setUsers(usersData.filter((user: UserItem) => user.active));
       setSectors(sectorsData.filter((sector: SectorItem) => sector.active));
     } catch (error) {
-      console.error("Erro ao carregar projetos", error);
+      console.error("Erro ao carregar dados", error);
     } finally {
       setLoading(false);
     }
