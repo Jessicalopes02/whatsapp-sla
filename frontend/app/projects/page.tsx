@@ -5,7 +5,6 @@ import { AppShell } from "../../components/AppShell";
 import {
   getProjects,
   getUsersList,
-  getSectors,
   updateProject,
 } from "../../services/api";
 
@@ -46,6 +45,13 @@ type SectorItem = {
   active: boolean;
 };
 
+// Lista fixa de setores
+const sectorsData = [
+  { id: "1", name: "Comercial", defaultSlaMinutes: 60, active: true },
+  { id: "2", name: "CS", defaultSlaMinutes: 60, active: true },
+  { id: "3", name: "Sales Support", defaultSlaMinutes: 120, active: true },
+];
+
 function getDefaultSlaByRole(role?: string) {
   if (role === "sales_support") return 120;
   if (role === "cs") return 60;
@@ -71,12 +77,10 @@ function SummaryCard({
 function ProjectCard({
   project,
   users,
-  sectors,
   onSaved,
 }: {
   project: ProjectItem;
   users: UserItem[];
-  sectors: SectorItem[];
   onSaved: () => Promise<void>;
 }) {
   const isConfigured = !!project.responsibleUserId && !!project.sectorId;
@@ -242,7 +246,7 @@ function ProjectCard({
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
               >
                 <option value="">Selecionar setor</option>
-                {sectors.map((sector) => (
+                {sectorsData.map((sector) => (
                   <option key={sector.id} value={sector.id}>
                     {sector.name}
                   </option>
@@ -299,7 +303,6 @@ function ProjectCard({
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [users, setUsers] = useState<UserItem[]>([]);
-  const [sectors, setSectors] = useState<SectorItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [selectedSectorId, setSelectedSectorId] = useState("");
@@ -308,15 +311,13 @@ export default function ProjectsPage() {
     try {
       setLoading(true);
 
-      const [projectsData, usersData, sectorsData] = await Promise.all([
+      const [projectsData, usersData] = await Promise.all([
         getProjects(),
         getUsersList(),
-        getSectors(),
       ]);
 
       setProjects(projectsData);
       setUsers(usersData.filter((user: UserItem) => user.active));
-      setSectors(sectorsData.filter((sector: SectorItem) => sector.active));
     } catch (error) {
       console.error("Erro ao carregar dados", error);
     } finally {
@@ -388,7 +389,7 @@ export default function ProjectsPage() {
             className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white"
           >
             <option value="">Todos os setores</option>
-            {sectors.map((sector) => (
+            {sectorsData.map((sector) => (
               <option key={sector.id} value={sector.id}>
                 {sector.name}
               </option>
@@ -409,7 +410,6 @@ export default function ProjectsPage() {
                 key={project.id}
                 project={project}
                 users={users}
-                sectors={sectors}
                 onSaved={loadData}
               />
             ))}
