@@ -29,6 +29,9 @@ type LiveBoardItem = {
   minutesToDeadline: number;
   isNearDeadline: boolean;
   isOverdue: boolean;
+  lastMessageBody?: string | null;
+  lastSenderName?: string | null;
+  lastMessageAt?: string | null;
 };
 
 type DebugNotification = {
@@ -48,12 +51,12 @@ type DebugNotification = {
 
 type ManualCloseStatus = "closed_manual" | "no_response_needed";
 
-function formatDate(value: string) {
+function formatDate(value?: string | null) {
+  if (!value) return "-";
   return new Date(value).toLocaleString("pt-BR");
 }
 
-const API =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3333";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3333";
 
 async function closeTicket(
   id: string,
@@ -74,25 +77,46 @@ async function closeTicket(
   }
 }
 
+async function chargeResponse(id: string): Promise<void> {
+  const res = await fetch(`${API}/sla-tickets/${id}/charge-response`, {
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Erro ao cobrar resposta:", errorText);
+    throw new Error("Erro ao cobrar resposta");
+  }
+}
+
 function LiveTicketCard({
   ticket,
   onCloseTicket,
+  onChargeResponse,
   closingTicketId,
+  chargingTicketId,
 }: {
   ticket: LiveBoardItem;
   onCloseTicket: (ticketId: string, status: ManualCloseStatus) => Promise<void>;
+  onChargeResponse: (ticketId: string) => Promise<void>;
   closingTicketId: string | null;
+  chargingTicketId: string | null;
 }) {
   const isClosing = closingTicketId === ticket.id;
+  const isCharging = chargingTicketId === ticket.id;
 
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-950 p-5">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-white">{ticket.projectName}</h3>
+          <h3 className="text-lg font-semibold text-white">
+            {ticket.projectName}
+          </h3>
           <p className="mt-1 text-sm text-slate-400">{ticket.groupName}</p>
           {ticket.sectorName && (
-            <p className="mt-1 text-xs text-slate-500">Setor: {ticket.sectorName}</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Setor: {ticket.sectorName}
+            </p>
           )}
         </div>
 
@@ -114,8 +138,12 @@ function LiveTicketCard({
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Responsável
           </p>
-          <p className="mt-3 font-semibold text-white">{ticket.responsibleName}</p>
-          <p className="mt-1 text-sm text-slate-400">{ticket.responsiblePhone}</p>
+          <p className="mt-3 font-semibold text-white">
+            {ticket.responsibleName}
+          </p>
+          <p className="mt-1 text-sm text-slate-400">
+            {ticket.responsiblePhone}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
@@ -130,6 +158,21 @@ function LiveTicketCard({
             <span className="font-medium text-white">Deadline:</span>{" "}
             {formatDate(ticket.deadlineAt)}
           </p>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Última mensagem
+        </p>
+
+        <p className="mt-3 text-sm text-slate-300">
+          {ticket.lastMessageBody ?? "Nenhuma mensagem registrada."}
+        </p>
+
+        <div className="mt-3 flex flex-col gap-1 text-xs text-slate-500">
+          <span>Remetente: {ticket.lastSenderName ?? "-"}</span>
+          <span>Horário: {formatDate(ticket.lastMessageAt)}</span>
         </div>
       </div>
 
@@ -153,7 +196,7 @@ function LiveTicketCard({
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={isClosing}
+            disabled={isClosing || isCharging}
             onClick={() => onCloseTicket(ticket.id, "closed_manual")}
             className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -162,11 +205,20 @@ function LiveTicketCard({
 
           <button
             type="button"
-            disabled={isClosing}
+            disabled={isClosing || isCharging}
             onClick={() => onCloseTicket(ticket.id, "no_response_needed")}
             className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Sem resposta necessária
+          </button>
+
+          <button
+            type="button"
+            disabled={isClosing || isCharging}
+            onClick={() => onChargeResponse(ticket.id)}
+            className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isCharging ? "Cobrando..." : "Cobrar resposta"}
           </button>
         </div>
       </div>
@@ -189,6 +241,7 @@ export default function LivePage() {
   const [selectedSectorId, setSelectedSectorId] = useState("");
   const [loading, setLoading] = useState(true);
   const [closingTicketId, setClosingTicketId] = useState<string | null>(null);
+  const [chargingTicketId, setChargingTicketId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadFilters() {
@@ -268,6 +321,19 @@ export default function LivePage() {
     }
   }
 
+  async function handleChargeResponse(ticketId: string) {
+    try {
+      setChargingTicketId(ticketId);
+      await chargeResponse(ticketId);
+      await loadLive();
+    } catch (error) {
+      console.error("Erro ao cobrar resposta", error);
+      alert("Não foi possível cobrar resposta.");
+    } finally {
+      setChargingTicketId(null);
+    }
+  }
+
   const totalOpen = openTickets.length;
   const totalOverdue = delays.length;
 
@@ -288,6 +354,9 @@ export default function LivePage() {
       minutesToDeadline: item.minutesToDeadline,
       isNearDeadline: item.isNearDeadline,
       isOverdue: false,
+      lastMessageBody: item.lastMessageBody ?? null,
+      lastSenderName: item.lastSenderName ?? null,
+      lastMessageAt: item.lastMessageAt ?? null,
     }));
 
     const overdueMapped: LiveBoardItem[] = delays.map((item: any) => ({
@@ -306,6 +375,9 @@ export default function LivePage() {
       minutesToDeadline: -Math.abs(item.delayMinutes),
       isNearDeadline: false,
       isOverdue: true,
+      lastMessageBody: item.lastMessageBody ?? null,
+      lastSenderName: item.lastSenderName ?? null,
+      lastMessageAt: item.lastMessageAt ?? null,
     }));
 
     const all = [...overdueMapped, ...openMapped];
@@ -445,7 +517,9 @@ export default function LivePage() {
                   key={ticket.id}
                   ticket={ticket}
                   onCloseTicket={handleCloseTicket}
+                  onChargeResponse={handleChargeResponse}
                   closingTicketId={closingTicketId}
+                  chargingTicketId={chargingTicketId}
                 />
               ))}
             </div>

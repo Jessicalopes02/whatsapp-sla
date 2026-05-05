@@ -113,6 +113,10 @@ function ProjectCard({
     }
   }
 
+  function handleSectorChange(sectorId: string) {
+    setSelectedSectorId(sectorId);
+  }
+
   async function handleSave() {
     try {
       if (!selectedUserId || !selectedSectorId) {
@@ -234,7 +238,7 @@ function ProjectCard({
 
               <select
                 value={selectedSectorId}
-                onChange={(e) => setSelectedSectorId(e.target.value)}
+                onChange={(e) => handleSectorChange(e.target.value)}
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
               >
                 <option value="">Selecionar setor</option>
