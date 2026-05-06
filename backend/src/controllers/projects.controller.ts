@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../repositories/prisma";
 
+// Função para determinar o SLA baseado na função do responsável
 function getDefaultSlaMinutesByRole(role?: string) {
   if (role === "sales_support") return 120;
   if (role === "cs") return 60;
@@ -9,6 +10,7 @@ function getDefaultSlaMinutesByRole(role?: string) {
 }
 
 export class ProjectsController {
+  // Função de listagem de projetos
   list = async (_req: Request, res: Response) => {
     try {
       const projects = await prisma.project.findMany({
@@ -24,13 +26,13 @@ export class ProjectsController {
       return res.json(projects);
     } catch (error) {
       console.error("Erro ao listar projetos", error);
-
       return res.status(500).json({
         error: "internal_list_projects_error",
       });
     }
   };
 
+  // Função de criação de projetos
   create = async (req: Request, res: Response) => {
     try {
       const {
@@ -93,13 +95,13 @@ export class ProjectsController {
       return res.status(201).json(project);
     } catch (error) {
       console.error("Erro ao criar projeto", error);
-
       return res.status(500).json({
         error: "internal_create_project_error",
       });
     }
   };
 
+  // Função de atualização de projetos
   update = async (req: Request, res: Response) => {
     try {
       const projectId = String(req.params.id || "");
@@ -161,7 +163,7 @@ export class ProjectsController {
           ? getDefaultSlaMinutesByRole(responsibleUser.role)
           : existingProject.slaMinutes;
 
-      const project = await prisma.project.update({
+      const updatedProject = await prisma.project.update({
         where: { id: projectId },
         data: {
           name: name ?? existingProject.name,
@@ -181,10 +183,9 @@ export class ProjectsController {
         },
       });
 
-      return res.json(project);
+      return res.json(updatedProject);
     } catch (error) {
       console.error("Erro ao atualizar projeto", error);
-
       return res.status(500).json({
         error: "internal_update_project_error",
       });
