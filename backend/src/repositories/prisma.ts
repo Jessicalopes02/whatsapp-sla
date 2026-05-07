@@ -1,5 +1,6 @@
-import "dotenv/config";
+import dotenv from 'dotenv';
+dotenv.config(); // Garantir que as variáveis de ambiente são carregadas
+
 import { PrismaClient } from "@prisma/client";
 
-// Instanciando o Prisma Client sem o adapter
 export const prisma = new PrismaClient();
