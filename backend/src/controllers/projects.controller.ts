@@ -51,6 +51,17 @@ export class ProjectsController {
         sectorId?: string | null;
       };
 
+      // Log para verificar os dados recebidos
+      console.log("Dados recebidos para criação de projeto:", {
+        name,
+        groupExternalId,
+        groupName,
+        responsibleUserId,
+        slaMinutes,
+        active,
+        sectorId,
+      });
+
       if (!name || !groupExternalId || !groupName) {
         return res.status(400).json({
           error: "name_groupExternalId_groupName_are_required",
@@ -104,6 +115,7 @@ export class ProjectsController {
     try {
       const projectId = String(req.params.id || "");
 
+      // Verificando se o projectId foi enviado
       if (!projectId) {
         return res.status(400).json({
           error: "project_id_is_required",
@@ -126,6 +138,17 @@ export class ProjectsController {
         active?: boolean;
       };
 
+      // Log para verificar os dados recebidos
+      console.log("Dados recebidos para atualização de projeto:", {
+        projectId,
+        name,
+        groupName,
+        responsibleUserId,
+        sectorId,
+        slaMinutes,
+        active,
+      });
+
       const existingProject = await prisma.project.findUnique({
         where: { id: projectId },
         include: {
@@ -134,6 +157,7 @@ export class ProjectsController {
         },
       });
 
+      // Verificando se o projeto existe
       if (!existingProject) {
         return res.status(404).json({
           error: "project_not_found",
@@ -154,6 +178,20 @@ export class ProjectsController {
         }
       }
 
+      // Verificando se o setor existe
+      if (sectorId) {
+        const sector = await prisma.sector.findUnique({
+          where: { id: sectorId },
+        });
+
+        if (!sector) {
+          return res.status(404).json({
+            error: "sector_not_found",
+          });
+        }
+      }
+
+      // Se slaMinutes não foi enviado, use o valor default
       const nextSlaMinutes =
         typeof slaMinutes === "number"
           ? slaMinutes
@@ -161,6 +199,7 @@ export class ProjectsController {
           ? getDefaultSlaMinutesByRole(responsibleUser.role)
           : existingProject.slaMinutes;
 
+      // Atualizando o projeto
       const project = await prisma.project.update({
         where: { id: projectId },
         data: {
