@@ -5,6 +5,7 @@ import { AppShell } from "../../components/AppShell";
 import {
   getProjects,
   getUsersList,
+  getSectors,
   updateProject,
 } from "../../services/api";
 
@@ -45,17 +46,11 @@ type SectorItem = {
   active: boolean;
 };
 
-// Lista fixa de setores
-const sectorsData = [
-  { id: "1", name: "Comercial", defaultSlaMinutes: 60, active: true },
-  { id: "2", name: "CS", defaultSlaMinutes: 60, active: true },
-  { id: "3", name: "Sales Support", defaultSlaMinutes: 120, active: true },
-];
-
 function getDefaultSlaByRole(role?: string) {
   if (role === "sales_support") return 120;
   if (role === "cs") return 60;
   if (role === "comercial") return 60;
+
   return 60;
 }
 
@@ -77,22 +72,31 @@ function SummaryCard({
 function ProjectCard({
   project,
   users,
+  sectors,
   onSaved,
 }: {
   project: ProjectItem;
   users: UserItem[];
+  sectors: SectorItem[];
   onSaved: () => Promise<void>;
 }) {
-  const isConfigured = !!project.responsibleUserId && !!project.sectorId;
+  const isConfigured =
+    Boolean(project.responsibleUserId) && Boolean(project.sectorId);
 
   const [isEditing, setIsEditing] = useState(!isConfigured);
+
   const [selectedUserId, setSelectedUserId] = useState(
     project.responsibleUserId ?? ""
   );
+
   const [selectedSectorId, setSelectedSectorId] = useState(
     project.sectorId ?? ""
   );
-  const [slaMinutes, setSlaMinutes] = useState(project.slaMinutes || 60);
+
+  const [slaMinutes, setSlaMinutes] = useState(
+    project.slaMinutes || 60
+  );
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -111,9 +115,14 @@ function ProjectCard({
   function handleUserChange(userId: string) {
     setSelectedUserId(userId);
 
-    const selectedUser = users.find((user) => user.id === userId);
+    const selectedUser = users.find(
+      (user) => user.id === userId
+    );
+
     if (selectedUser) {
-      setSlaMinutes(getDefaultSlaByRole(selectedUser.role));
+      setSlaMinutes(
+        getDefaultSlaByRole(selectedUser.role)
+      );
     }
   }
 
@@ -122,12 +131,12 @@ function ProjectCard({
   }
 
   async function handleSave() {
-    try {
-      if (!selectedUserId || !selectedSectorId) {
-        alert("Selecione responsável e setor.");
-        return;
-      }
+    if (!selectedUserId || !selectedSectorId) {
+      alert("Selecione responsável e setor.");
+      return;
+    }
 
+    try {
       setSaving(true);
 
       await updateProject(project.id, {
@@ -139,7 +148,11 @@ function ProjectCard({
       await onSaved();
       setIsEditing(false);
     } catch (error) {
-      console.error("Erro ao atualizar projeto", error);
+      console.error(
+        "Erro ao atualizar projeto:",
+        error
+      );
+
       alert("Não foi possível salvar o projeto.");
     } finally {
       setSaving(false);
@@ -149,9 +162,13 @@ function ProjectCard({
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
       <div className="flex flex-col gap-2">
-        <h3 className="text-lg font-semibold text-white">{project.name}</h3>
+        <h3 className="text-lg font-semibold text-white">
+          {project.name}
+        </h3>
 
-        <p className="text-sm text-slate-400">{project.groupName}</p>
+        <p className="text-sm text-slate-400">
+          {project.groupName}
+        </p>
 
         <p className="text-xs text-slate-500">
           ID do grupo: {project.groupExternalId}
@@ -165,6 +182,7 @@ function ProjectCard({
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Responsável
               </p>
+
               <p className="mt-3 text-sm text-slate-200">
                 {project.responsibleUser
                   ? `${project.responsibleUser.name} (${project.responsibleUser.phone})`
@@ -176,6 +194,7 @@ function ProjectCard({
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Setor
               </p>
+
               <p className="mt-3 text-sm text-slate-200">
                 {project.sector?.name ?? "Não definido"}
               </p>
@@ -184,8 +203,10 @@ function ProjectCard({
 
           <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300">
             <p>SLA atual: {project.slaMinutes} min</p>
+
             <p className="mt-1">
-              Status: {project.active ? "Ativo" : "Inativo"}
+              Status:{" "}
+              {project.active ? "Ativo" : "Inativo"}
             </p>
           </div>
 
@@ -201,10 +222,14 @@ function ProjectCard({
         <>
           <div className="mt-4 rounded-2xl border border-amber-800 bg-amber-950/20 p-4">
             <p className="text-sm font-semibold text-amber-300">
-              {isConfigured ? "Edição do projeto" : "Cadastro pendente"}
+              {isConfigured
+                ? "Edição do projeto"
+                : "Cadastro pendente"}
             </p>
+
             <p className="mt-1 text-xs text-slate-400">
-              Defina responsável, setor e SLA para ativar o fluxo corretamente.
+              Defina responsável, setor e SLA para ativar o
+              fluxo corretamente.
             </p>
           </div>
 
@@ -216,12 +241,20 @@ function ProjectCard({
 
               <select
                 value={selectedUserId}
-                onChange={(e) => handleUserChange(e.target.value)}
+                onChange={(event) =>
+                  handleUserChange(event.target.value)
+                }
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
               >
-                <option value="">Selecionar responsável</option>
+                <option value="">
+                  Selecionar responsável
+                </option>
+
                 {users.map((user) => (
-                  <option key={user.id} value={user.id}>
+                  <option
+                    key={user.id}
+                    value={user.id}
+                  >
                     {user.name} ({user.role})
                   </option>
                 ))}
@@ -242,19 +275,28 @@ function ProjectCard({
 
               <select
                 value={selectedSectorId}
-                onChange={(e) => handleSectorChange(e.target.value)}
+                onChange={(event) =>
+                  handleSectorChange(event.target.value)
+                }
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
               >
-                <option value="">Selecionar setor</option>
-                {sectorsData.map((sector) => (
-                  <option key={sector.id} value={sector.id}>
+                <option value="">
+                  Selecionar setor
+                </option>
+
+                {sectors.map((sector) => (
+                  <option
+                    key={sector.id}
+                    value={sector.id}
+                  >
                     {sector.name}
                   </option>
                 ))}
               </select>
 
               <p className="mt-2 text-xs text-slate-500">
-                Atual: {project.sector?.name ?? "Não definido"}
+                Atual:{" "}
+                {project.sector?.name ?? "Não definido"}
               </p>
             </div>
           </div>
@@ -268,7 +310,11 @@ function ProjectCard({
               type="number"
               min={1}
               value={slaMinutes}
-              onChange={(e) => setSlaMinutes(Number(e.target.value))}
+              onChange={(event) =>
+                setSlaMinutes(
+                  Number(event.target.value)
+                )
+              }
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none"
             />
           </div>
@@ -280,7 +326,11 @@ function ProjectCard({
               disabled={saving}
               className="flex-1 rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "Salvando..." : isConfigured ? "Salvar edição" : "Cadastrar projeto"}
+              {saving
+                ? "Salvando..."
+                : isConfigured
+                  ? "Salvar edição"
+                  : "Cadastrar projeto"}
             </button>
 
             {isConfigured && (
@@ -303,23 +353,45 @@ function ProjectCard({
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [users, setUsers] = useState<UserItem[]>([]);
+  const [sectors, setSectors] = useState<SectorItem[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [selectedSectorId, setSelectedSectorId] = useState("");
+  const [selectedSectorId, setSelectedSectorId] =
+    useState("");
 
   async function loadData() {
     try {
       setLoading(true);
 
-      const [projectsData, usersData] = await Promise.all([
+      const [
+        projectsData,
+        usersData,
+        sectorsData,
+      ] = await Promise.all([
         getProjects(),
         getUsersList(),
+        getSectors(),
       ]);
 
       setProjects(projectsData);
-      setUsers(usersData.filter((user: UserItem) => user.active));
+
+      setUsers(
+        usersData.filter(
+          (user: UserItem) => user.active
+        )
+      );
+
+      setSectors(
+        sectorsData.filter(
+          (sector: SectorItem) => sector.active
+        )
+      );
     } catch (error) {
-      console.error("Erro ao carregar dados", error);
+      console.error(
+        "Erro ao carregar dados:",
+        error
+      );
     } finally {
       setLoading(false);
     }
@@ -330,48 +402,89 @@ export default function ProjectsPage() {
   }, []);
 
   const filteredProjects = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
+    const normalized = query
+      .trim()
+      .toLowerCase();
 
     return projects.filter((project) => {
       const matchesQuery =
         !normalized ||
-        project.name?.toLowerCase().includes(normalized) ||
-        project.groupName?.toLowerCase().includes(normalized) ||
-        project.responsibleUser?.name?.toLowerCase().includes(normalized) ||
-        project.responsibleUser?.phone?.toLowerCase().includes(normalized) ||
-        project.sector?.name?.toLowerCase().includes(normalized);
+        project.name
+          ?.toLowerCase()
+          .includes(normalized) ||
+        project.groupName
+          ?.toLowerCase()
+          .includes(normalized) ||
+        project.responsibleUser?.name
+          ?.toLowerCase()
+          .includes(normalized) ||
+        project.responsibleUser?.phone
+          ?.toLowerCase()
+          .includes(normalized) ||
+        project.sector?.name
+          ?.toLowerCase()
+          .includes(normalized);
 
       const matchesSector =
-        !selectedSectorId || project.sectorId === selectedSectorId;
+        !selectedSectorId ||
+        project.sectorId === selectedSectorId;
 
       return matchesQuery && matchesSector;
     });
-  }, [projects, query, selectedSectorId]);
+  }, [
+    projects,
+    query,
+    selectedSectorId,
+  ]);
 
   const totalProjects = projects.length;
+
   const configuredProjects = projects.filter(
-    (project) => !!project.responsibleUserId && !!project.sectorId
+    (project) =>
+      Boolean(project.responsibleUserId) &&
+      Boolean(project.sectorId)
   ).length;
+
   const pendingConfiguration = projects.filter(
-    (project) => !project.responsibleUserId || !project.sectorId
+    (project) =>
+      !project.responsibleUserId ||
+      !project.sectorId
   ).length;
 
   return (
     <AppShell>
       <main className="min-h-screen bg-slate-950 px-6 py-8">
         <header className="mb-8">
-          <p className="text-sm text-slate-400">Gestão</p>
-          <h1 className="text-3xl font-bold text-white">Projetos</h1>
+          <p className="text-sm text-slate-400">
+            Gestão
+          </p>
+
+          <h1 className="text-3xl font-bold text-white">
+            Projetos
+          </h1>
+
           <p className="mt-2 text-sm text-slate-400">
-            Grupos recebidos diretamente do WhatsApp para definição de
-            responsável, setor e acompanhamento operacional.
+            Grupos recebidos diretamente do WhatsApp
+            para definição de responsável, setor e
+            acompanhamento operacional.
           </p>
         </header>
 
         <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <SummaryCard title="Total" value={totalProjects} />
-          <SummaryCard title="Configurados" value={configuredProjects} />
-          <SummaryCard title="Pendentes" value={pendingConfiguration} />
+          <SummaryCard
+            title="Total"
+            value={totalProjects}
+          />
+
+          <SummaryCard
+            title="Configurados"
+            value={configuredProjects}
+          />
+
+          <SummaryCard
+            title="Pendentes"
+            value={pendingConfiguration}
+          />
         </section>
 
         <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -379,18 +492,30 @@ export default function ProjectsPage() {
             type="text"
             placeholder="Buscar projeto, grupo ou responsável..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(event) =>
+              setQuery(event.target.value)
+            }
             className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white"
           />
 
           <select
             value={selectedSectorId}
-            onChange={(e) => setSelectedSectorId(e.target.value)}
+            onChange={(event) =>
+              setSelectedSectorId(
+                event.target.value
+              )
+            }
             className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white"
           >
-            <option value="">Todos os setores</option>
-            {sectorsData.map((sector) => (
-              <option key={sector.id} value={sector.id}>
+            <option value="">
+              Todos os setores
+            </option>
+
+            {sectors.map((sector) => (
+              <option
+                key={sector.id}
+                value={sector.id}
+              >
                 {sector.name}
               </option>
             ))}
@@ -398,7 +523,9 @@ export default function ProjectsPage() {
         </section>
 
         {loading ? (
-          <p className="text-slate-400">Carregando...</p>
+          <p className="text-slate-400">
+            Carregando...
+          </p>
         ) : filteredProjects.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-400">
             Nenhum projeto encontrado.
@@ -410,6 +537,7 @@ export default function ProjectsPage() {
                 key={project.id}
                 project={project}
                 users={users}
+                sectors={sectors}
                 onSaved={loadData}
               />
             ))}
