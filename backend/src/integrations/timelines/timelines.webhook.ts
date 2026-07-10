@@ -9,9 +9,13 @@ import {
 const messagesService = new MessagesService();
 const timelinesProvider = new TimelinesProvider();
 
-const WEBHOOK_TOKEN = process.env.TIMELINES_WEBHOOK_TOKEN || "dev_token";
+const WEBHOOK_TOKEN =
+  process.env.TIMELINES_WEBHOOK_TOKEN || "dev_token";
+
 const TEST_SEND_TOKEN =
-  process.env.TIMELINES_TEST_SEND_TOKEN || WEBHOOK_TOKEN || "dev_token";
+  process.env.TIMELINES_TEST_SEND_TOKEN ||
+  WEBHOOK_TOKEN ||
+  "dev_token";
 
 export class TimelinesWebhookController {
   receive = async (req: Request, res: Response) => {
@@ -60,7 +64,8 @@ export class TimelinesWebhookController {
         externalMessageId: mapped.externalMessageId,
         groupExternalId: mapped.groupExternalId,
         groupName: mapped.groupName ?? undefined,
-        responsibleName: mapped.responsibleName ?? undefined,
+        responsibleName:
+          mapped.responsibleName ?? undefined,
         senderPhone: mapped.senderPhone,
         senderName: mapped.senderName ?? undefined,
         body: mapped.body ?? undefined,
@@ -74,7 +79,10 @@ export class TimelinesWebhookController {
         result,
       });
     } catch (error) {
-      console.error("Erro no webhook TimelinesAI", error);
+      console.error(
+        "Erro no webhook TimelinesAI",
+        error
+      );
 
       return res.status(500).json({
         received: false,
@@ -104,18 +112,75 @@ export class TimelinesWebhookController {
         });
       }
 
-      const result = await timelinesProvider.sendMessage({
-        phone,
-        text,
-      });
+      const result =
+        await timelinesProvider.sendMessage({
+          phone,
+          text,
+        });
 
-      return res.status(result.ok ? 200 : 502).json(result);
+      return res
+        .status(result.ok ? 200 : 502)
+        .json(result);
     } catch (error) {
-      console.error("Erro no teste de envio TimelinesAI", error);
+      console.error(
+        "Erro no teste de envio TimelinesAI",
+        error
+      );
 
       return res.status(500).json({
         ok: false,
         error: "internal_test_send_error",
+      });
+    }
+  };
+
+  listGroups = async (req: Request, res: Response) => {
+    try {
+      const token = req.query.token;
+
+      if (token !== TEST_SEND_TOKEN) {
+        return res.status(401).json({
+          ok: false,
+          error: "invalid_token",
+        });
+      }
+
+      const result =
+        await timelinesProvider.listActiveGroups();
+
+      if (!result.ok) {
+        return res.status(502).json({
+          ok: false,
+          error: result.error,
+        });
+      }
+
+      const groups = result.chats.map((chat) => ({
+        id: String(chat.id),
+        name: chat.name ?? "Grupo sem nome",
+        jid: chat.jid ?? null,
+        closed: chat.closed ?? false,
+        lastMessageAt:
+          chat.last_message_timestamp ?? null,
+        responsibleName:
+          chat.responsible_name ?? null,
+        chatUrl: chat.chat_url ?? null,
+      }));
+
+      return res.status(200).json({
+        ok: true,
+        total: groups.length,
+        groups,
+      });
+    } catch (error) {
+      console.error(
+        "Erro ao listar grupos da TimelinesAI:",
+        error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error: "internal_list_groups_error",
       });
     }
   };
