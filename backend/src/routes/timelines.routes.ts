@@ -7,10 +7,28 @@ export const timelinesRoutes = Router();
 const controller = new TimelinesWebhookController();
 
 timelinesRoutes.get("/ping", (_req, res) => {
-  res.json({ ok: true, route: "timelines-routes-loaded" });
+  res.json({
+    ok: true,
+    route: "timelines-routes-loaded",
+  });
 });
 
-timelinesRoutes.post("/webhook", controller.receive);
-timelinesRoutes.post("/test-send", controller.testSend);
+timelinesRoutes.post(
+  "/webhook",
+  controller.receive
+);
 
-timelinesRoutes.get("/groups", controller.listGroups);
+timelinesRoutes.post(
+  "/test-send",
+  controller.testSend
+);
+
+timelinesRoutes.get(
+  "/groups",
+  controller.listGroups
+);
+
+timelinesRoutes.post(
+  "/sync-groups",
+  controller.syncGroups
+);
