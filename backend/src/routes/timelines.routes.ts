@@ -12,3 +12,5 @@ timelinesRoutes.get("/ping", (_req, res) => {
 
 timelinesRoutes.post("/webhook", controller.receive);
 timelinesRoutes.post("/test-send", controller.testSend);
+
+timelinesRoutes.get("/groups", controller.listGroups);
