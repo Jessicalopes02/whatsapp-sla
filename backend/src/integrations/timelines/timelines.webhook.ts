@@ -62,10 +62,17 @@ export class TimelinesWebhookController {
 
       console.log("MAPPED TIMELINES:", mapped);
 
+      /**
+       * Não exigimos mais senderPhone.
+       *
+       * Mensagens enviadas pelo time podem chegar com:
+       * direction = outgoing
+       *
+       * mas sem telefone do remetente.
+       */
       if (
         !mapped.externalMessageId ||
-        !mapped.groupExternalId ||
-        !mapped.senderPhone
+        !mapped.groupExternalId
       ) {
         return res.status(200).json({
           received: true,
@@ -76,31 +83,49 @@ export class TimelinesWebhookController {
       }
 
       const result = await messagesService.ingest({
-        externalMessageId: mapped.externalMessageId,
-        groupExternalId: mapped.groupExternalId,
-        groupName: mapped.groupName ?? undefined,
+        externalMessageId:
+          mapped.externalMessageId,
+
+        groupExternalId:
+          mapped.groupExternalId,
+
+        groupName:
+          mapped.groupName ?? undefined,
+
         responsibleName:
           mapped.responsibleName ?? undefined,
-        senderPhone: mapped.senderPhone,
-        senderName: mapped.senderName ?? undefined,
-        body: mapped.body ?? undefined,
-        sentAt: mapped.sentAt,
+
+        senderPhone:
+          mapped.senderPhone ?? undefined,
+
+        senderName:
+          mapped.senderName ?? undefined,
+
+        body:
+          mapped.body ?? undefined,
+
+        sentAt:
+          mapped.sentAt,
+
+        direction:
+          mapped.direction ?? undefined,
       });
 
       console.log("RESULTADO INGEST:", result);
 
-      return res.json({
+      return res.status(200).json({
         received: true,
         result,
       });
     } catch (error) {
       console.error(
-        "Erro no webhook TimelinesAI",
+        "Erro no webhook TimelinesAI:",
         error
       );
 
       return res.status(500).json({
         received: false,
+        error: "internal_webhook_error",
       });
     }
   };
@@ -138,7 +163,7 @@ export class TimelinesWebhookController {
         .json(result);
     } catch (error) {
       console.error(
-        "Erro no teste de envio TimelinesAI",
+        "Erro no teste de envio TimelinesAI:",
         error
       );
 
@@ -149,7 +174,10 @@ export class TimelinesWebhookController {
     }
   };
 
-  listGroups = async (req: Request, res: Response) => {
+  listGroups = async (
+    req: Request,
+    res: Response
+  ) => {
     try {
       const token = req.query.token;
 
@@ -172,14 +200,24 @@ export class TimelinesWebhookController {
 
       const groups = result.chats.map((chat) => ({
         id: String(chat.id),
-        name: chat.name ?? "Grupo sem nome",
-        jid: chat.jid ?? null,
-        closed: chat.closed ?? false,
+
+        name:
+          chat.name ?? "Grupo sem nome",
+
+        jid:
+          chat.jid ?? null,
+
+        closed:
+          chat.closed ?? false,
+
         lastMessageAt:
           chat.last_message_timestamp ?? null,
+
         responsibleName:
           chat.responsible_name ?? null,
-        chatUrl: chat.chat_url ?? null,
+
+        chatUrl:
+          chat.chat_url ?? null,
       }));
 
       return res.status(200).json({
@@ -200,7 +238,10 @@ export class TimelinesWebhookController {
     }
   };
 
-  syncGroups = async (req: Request, res: Response) => {
+  syncGroups = async (
+    req: Request,
+    res: Response
+  ) => {
     try {
       const token = req.query.token;
 
@@ -279,7 +320,8 @@ export class TimelinesWebhookController {
 
         await Promise.all(
           batch.map(async (chat) => {
-            const groupExternalId = String(chat.id);
+            const groupExternalId =
+              String(chat.id);
 
             const groupName =
               chat.name?.trim() ||
@@ -303,8 +345,10 @@ export class TimelinesWebhookController {
                   name: groupName,
                   groupExternalId,
                   groupName,
+
                   responsibleUserId: null,
                   sectorId: null,
+
                   slaMinutes: 60,
                   active: true,
                   lastMessageAt,
